@@ -7,7 +7,9 @@ use crate::ray::{Point, Ray};
 use crate::vec3::Vec3;
 
 mod colour;
+mod hit;
 mod ray;
+mod sphere;
 mod vec3;
 
 fn main() -> std::io::Result<()> {
