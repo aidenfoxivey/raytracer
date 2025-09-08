@@ -12,6 +12,7 @@ use crate::vec3::Vec3;
 mod colour;
 mod hit;
 mod hittable_list;
+mod interval;
 mod ray;
 mod sphere;
 mod utils;
