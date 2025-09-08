@@ -36,7 +36,7 @@ fn main() -> std::io::Result<()> {
     }
 
     let mut world = HittableList::default();
-    world.add(Rc::new(Sphere::new(Point::new(0., 0., 0.), 0.5)));
+    world.add(Rc::new(Sphere::new(Point::new(0., 0., -1.), 0.5)));
     world.add(Rc::new(Sphere::new(Point::new(0., -100.5, -1.), 100.)));
 
     let focal_length = 1.0;
