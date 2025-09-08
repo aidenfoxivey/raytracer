@@ -1,7 +1,7 @@
 use std::fmt;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub};
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Default)]
 pub struct Vec3(pub f64, pub f64, pub f64);
 
 impl Vec3 {
@@ -37,12 +37,6 @@ impl Vec3 {
 impl fmt::Display for Vec3 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(f, "{} {} {}", self.0, self.1, self.0)
-    }
-}
-
-impl Default for Vec3 {
-    fn default() -> Self {
-        Vec3(0.0, 0.0, 0.0)
     }
 }
 
@@ -111,6 +105,7 @@ impl Neg for Vec3 {
         Self(-self.0, -self.1, -self.2)
     }
 }
+
 #[cfg(test)]
 mod test {
     use super::*;

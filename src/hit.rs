@@ -1,6 +1,7 @@
 use crate::ray::{Point, Ray};
 use crate::vec3::Vec3;
 
+#[derive(Debug, Clone, Copy, Default)]
 pub struct HitRecord {
     pub p: Point,
     pub norm: Vec3,
@@ -25,5 +26,5 @@ impl HitRecord {
 }
 
 pub trait Hittable {
-    fn hit(&self, r: &Ray, ray_tmin: f64, ray_tmax: f64, rec: &mut HitRecord) -> bool;
+    fn hit(&self, r: &Ray, ray_t: (f64, f64), rec: &mut HitRecord) -> bool;
 }
