@@ -15,6 +15,8 @@ pub struct Camera {
     pub image_width: i32,
     /// Count of random samples per pixel
     pub samples_per_pixel: i32,
+    /// Max number of ray bounces into a scene
+    pub max_depth: i32,
     /// Image height
     image_height: i32,
     /// Color scale factor for a sum of pixel samples
@@ -32,7 +34,12 @@ pub struct Camera {
 pub type Colour = Vec3;
 
 impl Camera {
-    pub fn new(aspect_ratio: f64, image_width: i32, samples_per_pixel: i32) -> Self {
+    pub fn new(
+        aspect_ratio: f64,
+        image_width: i32,
+        samples_per_pixel: i32,
+        max_depth: i32,
+    ) -> Self {
         let mut image_height = (image_width as f64 / aspect_ratio) as i32;
         if image_height < 1 {
             image_height = 1;
@@ -61,6 +68,7 @@ impl Camera {
             aspect_ratio,
             image_width,
             samples_per_pixel,
+            max_depth,
             image_height,
             pixel_samples_scale,
             centre,
@@ -112,10 +120,14 @@ impl Camera {
     }
 
     /// Blend a value via linear interpolation via the y coordinate.
-    pub fn ray_colour<T>(r: &Ray, world: &T) -> Colour
+    pub fn ray_colour<T>(r: &Ray, depth: i32, world: &T) -> Colour
     where
         T: Hittable,
     {
+        if depth <= 0 {
+            return Colour::new(0., 0., 0.);
+        }
+
         let mut rec = HitRecord::default();
 
         if world.hit(
@@ -127,7 +139,7 @@ impl Camera {
             &mut rec,
         ) {
             let direction = Vec3::random_on_hemisphere(&rec.norm);
-            return Camera::ray_colour(&Ray::new(rec.p, direction), world) * 0.5;
+            return Camera::ray_colour(&Ray::new(rec.p, direction), depth - 1, world) * 0.5;
         }
 
         let unit_direction = r.direction.unit();
@@ -158,7 +170,7 @@ impl Camera {
                 let mut pixel_colour = Colour::new(0., 0., 0.);
                 for _ in 0..self.samples_per_pixel {
                     let r = self.get_ray(i, j);
-                    pixel_colour += Camera::ray_colour(&r, world);
+                    pixel_colour += Camera::ray_colour(&r, self.max_depth, world);
                 }
                 Camera::write_colour(&mut s, &(pixel_colour * self.pixel_samples_scale))?;
             }
