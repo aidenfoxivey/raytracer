@@ -5,6 +5,7 @@ use std::path::Path;
 use crate::hit::{HitRecord, Hittable};
 use crate::interval::Interval;
 use crate::ray::{Point, Ray};
+use crate::utils::random_double;
 use crate::vec3::Vec3;
 
 pub struct Camera {
@@ -12,8 +13,12 @@ pub struct Camera {
     pub aspect_ratio: f64,
     /// Image width
     pub image_width: i32,
+    /// Count of random samples per pixel
+    pub samples_per_pixel: i32,
     /// Image height
     image_height: i32,
+    /// Color scale factor for a sum of pixel samples
+    pixel_samples_scale: f64,
     /// Centre of camera
     centre: Point,
     /// Location of pixel 0, 0
@@ -27,11 +32,13 @@ pub struct Camera {
 pub type Colour = Vec3;
 
 impl Camera {
-    pub fn new(aspect_ratio: f64, image_width: i32) -> Self {
+    pub fn new(aspect_ratio: f64, image_width: i32, samples_per_pixel: i32) -> Self {
         let mut image_height = (image_width as f64 / aspect_ratio) as i32;
         if image_height < 1 {
             image_height = 1;
         }
+
+        let pixel_samples_scale = 1.0 / samples_per_pixel as f64;
 
         let centre = Point::new(0.0, 0.0, 0.0);
 
@@ -40,7 +47,7 @@ impl Camera {
         let viewport_width = viewport_height * (image_width as f64 / image_height as f64);
 
         let viewport_u = Vec3::new(viewport_width, 0., 0.);
-        let viewport_v = Vec3::new(0., -viewport_width, 0.);
+        let viewport_v = Vec3::new(0., -viewport_height, 0.);
 
         let pixel_delta_u = viewport_u / image_width as f64;
         let pixel_delta_v = viewport_v / image_height as f64;
@@ -53,12 +60,36 @@ impl Camera {
         Self {
             aspect_ratio,
             image_width,
+            samples_per_pixel,
             image_height,
+            pixel_samples_scale,
             centre,
             pixel00_loc,
             pixel_delta_u,
             pixel_delta_v,
         }
+    }
+
+    pub fn get_ray(&self, i: i32, j: i32) -> Ray {
+        let offset = Camera::sample_square();
+        let pixel_sample = self.pixel00_loc
+            + (self.pixel_delta_u * (i as f64 + offset.0))
+            + (self.pixel_delta_v * (j as f64 + offset.1));
+
+        let ray_origin = self.centre;
+        let ray_direction = pixel_sample - ray_origin;
+
+        Ray::new(ray_origin, ray_direction)
+    }
+
+    fn sample_square() -> Vec3 {
+        // TODO: Need to share.
+        let mut rng = rand::rng();
+        Vec3::new(
+            random_double(&mut rng) - 0.5,
+            random_double(&mut rng) + 0.5,
+            0.0,
+        )
     }
 
     pub fn write_colour(v: &mut Vec<u8>, colour: &Colour) -> std::io::Result<()> {
@@ -71,9 +102,11 @@ impl Camera {
         let g = colour.1;
         let b = colour.2;
 
-        let rbyte = (255.999 * r) as i32;
-        let gbyte = (255.999 * g) as i32;
-        let bbyte = (255.999 * b) as i32;
+        // Translate the [0,1] component values to the byte range [0,255]
+        static INTENSITY: Interval = Interval::new(0.0, 0.999);
+        let rbyte = (256.0 * INTENSITY.clamp(r)) as i32;
+        let gbyte = (256.0 * INTENSITY.clamp(g)) as i32;
+        let bbyte = (256.0 * INTENSITY.clamp(b)) as i32;
 
         writeln!(v, "{} {} {}", rbyte, gbyte, bbyte)
     }
@@ -114,46 +147,19 @@ impl Camera {
 
         let mut s = Vec::new();
 
-        let aspect_ratio = 16.0 / 9.0;
-        let image_width = 400;
-
-        // Calculate the image height and ensure a height of minimum 1.
-        let mut image_height = (image_width as f64 / aspect_ratio) as i32;
-        if image_height < 1 {
-            image_height = 1;
-        }
-
-        let focal_length = 1.0;
-        let viewport_height = 2.0;
-        let viewport_width = viewport_height * (image_width as f64 / image_height as f64);
-        let camera_centre = Point::new(0.0, 0.0, 0.0);
-
-        let viewport_u = Vec3::new(viewport_width, 0.0, 0.0);
-        let viewport_v = Vec3::new(0.0, -viewport_height, 0.0);
-
-        let pixel_delta_u = viewport_u / image_width as f64;
-        let pixel_delta_v = viewport_v / image_height as f64;
-
-        let viewport_upper_left =
-            camera_centre - Vec3::new(0.0, 0.0, focal_length) - viewport_u / 2.0 - viewport_v / 2.0;
-
-        let pixel00_loc = viewport_upper_left + (pixel_delta_u + pixel_delta_v) * 0.5;
-
         writeln!(&mut s, "P3")?;
-        writeln!(&mut s, "{} {}", image_width, image_height)?;
+        writeln!(&mut s, "{} {}", self.image_width, self.image_height)?;
         writeln!(&mut s, "255")?;
 
-        for j in 0..image_height {
+        for j in 0..self.image_height {
             print!(".");
-            for i in 0..image_width {
-                let pixel_centre =
-                    pixel00_loc + (pixel_delta_u * i as f64) + (pixel_delta_v * j as f64);
-                let ray_direction = pixel_centre - camera_centre;
-                let r = Ray::new(camera_centre, ray_direction);
-
-                let pixel_colour = Camera::ray_colour(&r, world);
-
-                Camera::write_colour(&mut s, &pixel_colour)?;
+            for i in 0..self.image_width {
+                let mut pixel_colour = Colour::new(0., 0., 0.);
+                for _ in 0..self.samples_per_pixel {
+                    let r = self.get_ray(i, j);
+                    pixel_colour += Camera::ray_colour(&r, world);
+                }
+                Camera::write_colour(&mut s, &(pixel_colour * self.pixel_samples_scale))?;
             }
         }
 

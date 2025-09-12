@@ -7,20 +7,30 @@ pub struct Interval {
 }
 
 impl Interval {
-    const fn new(min: f64, max: f64) -> Self {
+    pub const fn new(min: f64, max: f64) -> Self {
         Interval { min, max }
     }
 
-    fn size(&self) -> f64 {
+    pub fn size(&self) -> f64 {
         self.max - self.min
     }
 
-    fn contains(&self, x: f64) -> bool {
+    pub fn contains(&self, x: f64) -> bool {
         x <= self.max && x >= self.min
     }
 
-    fn surrounds(&self, x: f64) -> bool {
+    pub fn surrounds(&self, x: f64) -> bool {
         x < self.max && x > self.min
+    }
+
+    pub fn clamp(&self, x: f64) -> f64 {
+        if x < self.min {
+            return self.min;
+        }
+        if x > self.max {
+            return self.max;
+        }
+        x
     }
 }
 
