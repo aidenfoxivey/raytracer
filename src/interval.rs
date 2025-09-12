@@ -2,8 +2,8 @@ pub const EMPTY: Interval = Interval::new(f64::INFINITY, f64::NEG_INFINITY);
 pub const UNIVERSE: Interval = Interval::new(f64::NEG_INFINITY, f64::INFINITY);
 
 pub struct Interval {
-    min: f64,
-    max: f64,
+    pub min: f64,
+    pub max: f64,
 }
 
 impl Interval {
