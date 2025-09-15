@@ -133,7 +133,7 @@ impl Camera {
         if world.hit(
             r,
             Interval {
-                min: 0.0,
+                min: 0.001,
                 max: f64::INFINITY,
             },
             &mut rec,
